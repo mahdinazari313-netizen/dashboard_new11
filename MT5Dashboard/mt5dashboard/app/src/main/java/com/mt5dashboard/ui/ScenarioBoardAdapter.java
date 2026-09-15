@@ -55,6 +55,8 @@ public class ScenarioBoardAdapter extends RecyclerView.Adapter<ScenarioBoardAdap
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        // به‌جای Capture کردن position، Engine فعلی را فقط برای Bind استفاده می‌کنیم
+        // و موقع کلیک، position زنده‌ی ViewHolder را دوباره می‌گیریم.
         ScenarioEngine engine = engines.get(position);
         ScenarioConfig config = engine.getConfig();
 
@@ -93,7 +95,10 @@ public class ScenarioBoardAdapter extends RecyclerView.Adapter<ScenarioBoardAdap
                 buttonSilence.setAlpha(1f);
                 buttonSilence.setOnClickListener(v -> {
                     callback.onSilenceTrigger(engine, trigger);
-                    notifyItemChanged(position);
+                    int currentPosition = holder.getBindingAdapterPosition();
+                    if (currentPosition != RecyclerView.NO_POSITION) {
+                        notifyItemChanged(currentPosition);
+                    }
                 });
             }
 
