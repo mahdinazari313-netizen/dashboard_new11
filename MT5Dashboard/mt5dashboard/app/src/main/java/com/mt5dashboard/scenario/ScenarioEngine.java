@@ -1,9 +1,9 @@
 package com.mt5dashboard.scenario;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.mt5dashboard.core.Direction;
@@ -34,8 +34,14 @@ public class ScenarioEngine {
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
     private final List<AlarmListener> alarmListeners = new CopyOnWriteArrayList<>();
 
-    /** آخرین Trigger فعال برای هر Symbol+Direction. کلید فقط وقتی وجود دارد که ترکیب فعلاً معتبر و پاس‌شده باشد. */
-    private final Map<SymbolDirectionKey, Trigger> activeTriggers = new HashMap<>();
+    /**
+     * آخرین Trigger فعال برای هر Symbol+Direction. کلید فقط وقتی وجود دارد که ترکیب فعلاً معتبر و پاس‌شده باشد.
+     *
+     * ConcurrentHashMap دسترسی همزمان را امن می‌کند؛ اما عملیات ترکیبی
+     * (خواندن/تصمیم‌گیری/حذف/جایگزینی) هنوز باید اتمیک باشند، بنابراین
+     * متدهای تغییر وضعیت این Engine نیز synchronized شده‌اند.
+     */
+    private final Map<SymbolDirectionKey, Trigger> activeTriggers = new ConcurrentHashMap<>();
 
     public ScenarioEngine(ScenarioConfig config, SignalStateManager signalStateManager) {
         this.config = config;
@@ -55,7 +61,7 @@ public class ScenarioEngine {
     }
 
     /** فقط Triggerهای فعلاً فعال (برای نمایش در Scenario Board - بخش ۲۰ و ۲۱ سند). */
-    public List<Trigger> getActiveTriggers() {
+    public synchronized List<Trigger> getActiveTriggers() {
         return new ArrayList<>(activeTriggers.values());
     }
 
@@ -68,22 +74,33 @@ public class ScenarioEngine {
      * SignalStateManager می‌شود صدا زده شود. این متد فقط برای Symbol+Direction
      * همان سیگنال وارد شده ارزیابی مجدد انجام می‌دهد (بقیه Symbolها دست‌نخورده می‌مانند).
      */
-    public void onNewSignal(Signal incomingSignal, long now) {
+    public synchronized void onNewSignal(Signal incomingSignal, long now) {
         if (!config.isEnabled()) return;
 
         SymbolDirectionKey key = new SymbolDirectionKey(incomingSignal.getSymbol(), incomingSignal.getDirection());
         List<Signal> validCombination = getValidCombination(key, now);
 
         if (validCombination.isEmpty()) {
-            // هیچ سیگنال معتبری نمانده - اگر Trigger فعالی بود، دیگر معنی ندارد
-            activeTriggers.remove(key);
+            // هیچ سیگنال معتبری نمانده - اگر Trigger فعالی بود، دیگر معنی ندارد.
+            // اصلاحیه مهم (رفع باگ): قبلاً اینجا فقط از activeTriggers حذف می‌شد
+            // بدون اطلاع به AlarmListenerها؛ نتیجه‌اش نوتیفیکیشنی بود که برای
+            // همیشه روی صفحه کاربر می‌ماند چون هیچ‌کس onTriggerExpired را صدا
+            // نمی‌زد. حالا دقیقاً مثل periodicSafetyCheck، پیش از حذف اطلاع داده می‌شود.
+            Trigger removed = activeTriggers.remove(key);
+            if (removed != null) {
+                fireTriggerExpired(removed);
+            }
             return;
         }
 
         ConditionResult result = conditionEvaluator.evaluateAll(validCombination, config);
         if (!result.passed) {
-            // شروط پاس نشد - هر Trigger قبلی هم دیگر معتبر نیست
-            activeTriggers.remove(key);
+            // شروط پاس نشد - هر Trigger قبلی هم دیگر معتبر نیست.
+            // همان اصلاحیه بالا: اطلاع‌رسانی onTriggerExpired قبل از حذف.
+            Trigger removed = activeTriggers.remove(key);
+            if (removed != null) {
+                fireTriggerExpired(removed);
+            }
             return;
         }
 
@@ -102,7 +119,7 @@ public class ScenarioEngine {
      * باید به‌صورت دوره‌ای (مثلاً هر ۳۰-۶۰ ثانیه، یا با AlarmManager دقیق‌تر بر اساس
      * نزدیک‌ترین validUntil) صدا زده شود. هرگز Trigger جدید نمی‌سازد.
      */
-    public void periodicSafetyCheck(long now) {
+    public synchronized void periodicSafetyCheck(long now) {
         if (!config.isEnabled()) return;
 
         List<SymbolDirectionKey> keysToRemove = new ArrayList<>();
@@ -145,7 +162,7 @@ public class ScenarioEngine {
     // =====================================================================
 
     /** بخش ۱۴ سند: Silent فقط همین Trigger فعلی همان Symbol+Direction را ساکت می‌کند. */
-    public void silence(String symbol, Direction direction) {
+    public synchronized void silence(String symbol, Direction direction) {
         SymbolDirectionKey key = new SymbolDirectionKey(symbol, direction);
         Trigger trigger = activeTriggers.get(key);
         if (trigger != null) {
