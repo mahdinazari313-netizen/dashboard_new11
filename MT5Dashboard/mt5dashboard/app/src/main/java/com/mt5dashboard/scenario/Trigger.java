@@ -25,8 +25,8 @@ public class Trigger {
     private final List<Signal> combination; // سیگنال‌های تشکیل‌دهنده این ترکیب، در لحظه صدور
     private final long createdAt;
 
-    private boolean silenced = false;
-    private long lastAlarmAt;
+    private volatile boolean silenced = false;
+    private volatile long lastAlarmAt;
 
     public Trigger(String scenarioId, String symbol, Direction direction,
                     List<Signal> combination, long createdAt) {
