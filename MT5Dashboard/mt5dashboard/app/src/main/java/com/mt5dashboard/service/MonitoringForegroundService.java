@@ -28,6 +28,14 @@ import com.mt5dashboard.alarm.AlarmNotifier;
  * توجه معماری مهم: این سرویس هیچ منطق Signal/Scenario را خودش پیاده‌سازی نمی‌کند،
  * فقط زمان‌بند صدا زدن ScenarioEngineManager.runPeriodicSafetyCheck() است
  * (اصل ۲۴: استقلال لایه‌ها - این سرویس صرفاً یک Timer بیرونی است).
+ *
+ * اصلاحیه مهم (رفع باگ تکرار AlarmNotifier): بررسی "آیا AlarmNotifier قبلاً
+ * ثبت شده یا نه" دیگر با یک فیلد boolean محلی در همین Service انجام نمی‌شود،
+ * چون اگر سیستم پروسه را بکشد و به‌خاطر START_STICKY یک نمونه *جدید* از این
+ * Service ساخته شود، آن فیلد محلی دوباره false خواهد بود و یک AlarmNotifier
+ * تکراری ثبت می‌شود (نتیجه: هر آلارم چند بار نمایش/پخش می‌شود). این بررسی حالا
+ * از MT5DashboardApplication.shouldRegisterAlarmNotifier() که در کل عمر
+ * Process فقط یک‌بار true برمی‌گرداند استفاده می‌کند.
  */
 public class MonitoringForegroundService extends Service {
 
@@ -36,7 +44,6 @@ public class MonitoringForegroundService extends Service {
     private static final long SAFETY_CHECK_INTERVAL_MILLIS = 60_000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private boolean alarmNotifierRegistered = false;
 
     private final Runnable safetyCheckTick = new Runnable() {
         @Override
@@ -69,12 +76,16 @@ public class MonitoringForegroundService extends Service {
         handler.removeCallbacks(safetyCheckTick);
     }
 
-    /** ثبت AlarmNotifier فقط یک بار در کل عمر Process، صرف‌نظر از این‌که سرویس چند بار Restart شود. */
+    /**
+     * ثبت AlarmNotifier فقط یک بار در کل عمر Process، صرف‌نظر از این‌که این
+     * Service (به‌خاطر Restart توسط سیستم) چند بار onCreate/onStartCommand شود.
+     */
     private void registerAlarmNotifierIfNeeded() {
-        if (alarmNotifierRegistered) return;
+        if (!MT5DashboardApplication.getInstance().shouldRegisterAlarmNotifier()) {
+            return;
+        }
         MT5DashboardApplication.getInstance().getScenarioEngineManager()
                 .addGlobalAlarmListener(new AlarmNotifier(this));
-        alarmNotifierRegistered = true;
     }
 
     private void createNotificationChannelIfNeeded() {
@@ -84,7 +95,7 @@ public class MonitoringForegroundService extends Service {
                 NotificationChannel channel = new NotificationChannel(
                         CHANNEL_ID,
                         getString(R.string.monitoring_notification_channel_name),
-                        NotificationManager.IMPORTANCE_LOW // بدون صدا، بدون Heads-up - فقط یک نشانه ساکت
+                        NotificationManager.IMPORTANCE_LOW
                 );
                 channel.setDescription(getString(R.string.monitoring_notification_channel_desc));
                 channel.setShowBadge(false);
@@ -116,6 +127,6 @@ public class MonitoringForegroundService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null; // Bound service نیست، فقط Started+Foreground
+        return null;
     }
 }
