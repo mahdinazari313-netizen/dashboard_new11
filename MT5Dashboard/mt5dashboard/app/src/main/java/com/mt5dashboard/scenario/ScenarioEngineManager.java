@@ -49,9 +49,22 @@ public class ScenarioEngineManager implements SignalStateManager.Listener {
     /**
      * Close Scenario (بخش ۱۶ سند): کل سناریو حذف می‌شود، بدون نگهداری تاریخچه.
      * این با Silent (که فقط روی یک Trigger داخل ScenarioEngine اثر دارد) کاملاً متفاوت است.
+     *
+     * اصلاحیه مهم: پیش از حذف، تمام Triggerهای فعال این Scenario باید به‌عنوان
+     * "منقضی‌شده" به AlarmListenerها اطلاع داده شوند. در غیر این صورت، اگر یک
+     * Scenario در حالی که یک نوتیفیکیشن آلارم فعال دارد بسته شود، آن نوتیفیکیشن
+     * (چون هیچ‌کس دیگر onTriggerExpired را صدا نمی‌زند و دسترسی UI به آن
+     * Scenario دیگر وجود ندارد) برای همیشه روی صفحه کاربر باقی می‌ماند.
      */
     public void closeScenario(String scenarioId) {
-        engines.remove(scenarioId);
+        ScenarioEngine engine = engines.remove(scenarioId);
+        if (engine == null) return;
+
+        for (Trigger trigger : engine.getActiveTriggers()) {
+            for (AlarmListener listener : globalAlarmListeners) {
+                listener.onTriggerExpired(engine.getConfig(), trigger);
+            }
+        }
     }
 
     public ScenarioEngine getEngine(String scenarioId) {
@@ -86,4 +99,3 @@ public class ScenarioEngineManager implements SignalStateManager.Listener {
         }
     }
 }
-
