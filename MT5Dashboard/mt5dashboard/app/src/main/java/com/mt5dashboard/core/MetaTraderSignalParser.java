@@ -8,12 +8,21 @@ public class MetaTraderSignalParser implements SignalParser {
 
     /*
      * Broker symbols may contain underscores and other common symbol characters
-     * (for example AUDNZD_i). Keep the parser strict about the message structure,
-     * but do not incorrectly reject valid broker symbol names.
+     * (for example AUDNZD_i, EURAUD.x). Keep the parser strict about the message
+     * structure, but do not incorrectly reject valid broker symbol names.
      * Groups: 1=symbol, 2=timeframe, 3=direction, 4=embedded timeframe, 5=price.
+     *
+     * FIX: the trailing date/time block used to open with "(" and close with
+     * "]" (asymmetric), e.g. "-(2026.08.25 20:48:00]". The real notifications
+     * now open it with "[" instead, e.g. "-[2026.09.17 02:04:00]" (confirmed
+     * from actual device screenshots: "(EURAUD.x,M1) Buy Signal-(M1-1.61509)-
+     * [2026.09.17 02:04:00]"). Every message failed to match before this fix,
+     * so no signal was ever recorded. Only that one bracket character changed;
+     * everything else about the format (including the timeframe-consistency
+     * check below) stayed the same.
      */
     private static final Pattern PATTERN = Pattern.compile(
-            "^\\(([^(),\\s]+),\\s*([A-Za-z][A-Za-z0-9]*)\\)\\s+(Buy|Sell)\\s+Signal-\\(([A-Za-z][A-Za-z0-9]*)-(-?\\d+(?:\\.\\d+)?)\\)-\\([^\\]]+\\]\\s*$",
+            "^\\(([^(),\\s]+),\\s*([A-Za-z][A-Za-z0-9]*)\\)\\s+(Buy|Sell)\\s+Signal-\\(([A-Za-z][A-Za-z0-9]*)-(-?\\d+(?:\\.\\d+)?)\\)-\\[[^\\]]+\\]\\s*$",
             Pattern.CASE_INSENSITIVE
     );
 
