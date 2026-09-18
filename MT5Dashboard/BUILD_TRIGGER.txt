@@ -1,1 +1,2 @@
 Trigger automated APK build.
+Verification build requested 2026-09-19.
