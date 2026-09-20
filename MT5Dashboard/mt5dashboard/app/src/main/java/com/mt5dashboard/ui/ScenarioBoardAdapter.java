@@ -116,6 +116,9 @@ public class ScenarioBoardAdapter extends RecyclerView.Adapter<ScenarioBoardAdap
         if (config.isPriceDifferenceEnabled()) {
             sb.append("  |  Price Diff: On");
         }
+        if (config.isMinimumTimeframeSyncEnabled()) {
+            sb.append("  |  Min TF Sync: ").append(config.getMinimumTimeframeCount());
+        }
         return sb.toString();
     }
 

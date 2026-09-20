@@ -15,10 +15,12 @@ import com.mt5dashboard.core.Timeframe;
  *   Symbol و Direction مشخص، خروجی هر Trigger هستند نه ورودی Scenario
  *   (Trigger شامل symbol+direction است - توافق قبلی).
  *
- * طبق تصمیم صریح کاربر: «هیچ تنظیماتی خارج از سناریو قرار نگیرد؛ تمام محدودیت‌ها
- * و اینپوت‌ها فقط در سناریو باشند» - بنابراین تمام ورودی‌های بخش ۱۱ سند اینجا هستند.
+ * طبق تصمیم صریح کاربر: تمام تنظیمات و محدودیت‌ها داخل Scenario نگهداری می‌شوند.
+ * بنابراین Minimum Timeframe Sync نیز بخشی از ScenarioConfig است.
  *
- * هشدار (بخش ۲۵ سند): هیچ ورودی «تعداد تایم‌فریم موردنیاز» یا مشابه آن اضافه نشود.
+ * تصمیم بازنگری‌شده کاربر: یک شرط اختیاری برای حداقل تعداد تایم‌فریم هم‌زمان
+ * در خود Scenario اضافه شده است. این شرط مستقل از Main Time Frame و
+ * Price Difference است و فقط وقتی فعال باشد اعمال می‌شود.
  */
 public class ScenarioConfig {
 
@@ -31,6 +33,10 @@ public class ScenarioConfig {
     private Timeframe mainTimeframe;     // فقط وقتی mainTimeFrameEnabled=true معنی دارد
     private boolean priceDifferenceEnabled; // بخش ۱۱ سند
     private int repeatIntervalMinutes;      // بخش ۱۱ و ۲۲ سند
+
+    // شرط جدید: حداقل تعداد تایم‌فریم هم‌زمان
+    private boolean minimumTimeframeSyncEnabled;
+    private int minimumTimeframeCount = 2; // حداقل مجاز ۲
 
     public ScenarioConfig(String name) {
         this.id = UUID.randomUUID().toString();
@@ -103,5 +109,24 @@ public class ScenarioConfig {
             throw new IllegalArgumentException("Signal Repeat Interval باید مثبت باشد");
         }
         this.repeatIntervalMinutes = repeatIntervalMinutes;
+    }
+
+    public boolean isMinimumTimeframeSyncEnabled() {
+        return minimumTimeframeSyncEnabled;
+    }
+
+    public void setMinimumTimeframeSyncEnabled(boolean minimumTimeframeSyncEnabled) {
+        this.minimumTimeframeSyncEnabled = minimumTimeframeSyncEnabled;
+    }
+
+    public int getMinimumTimeframeCount() {
+        return minimumTimeframeCount;
+    }
+
+    public void setMinimumTimeframeCount(int minimumTimeframeCount) {
+        if (minimumTimeframeCount < 2) {
+            throw new IllegalArgumentException("Minimum Timeframe Sync باید حداقل ۲ باشد");
+        }
+        this.minimumTimeframeCount = minimumTimeframeCount;
     }
 }

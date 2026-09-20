@@ -22,6 +22,7 @@ import com.mt5dashboard.scenario.ScenarioConfig;
  * اینجا جمع شده‌اند (هیچ تنظیمی خارج از سناریو نیست):
  *   - Main Time Frame (فعال/غیرفعال + انتخاب تایم‌فریم)
  *   - Price Difference (فعال/غیرفعال)
+ *   - Minimum Timeframe Sync (فعال/غیرفعال + حداقل تعداد تایم‌فریم هم‌زمان)
  *   - Signal Validity Multiplier
  *   - Signal Repeat Interval
  *
@@ -34,6 +35,9 @@ public class CreateScenarioActivity extends AppCompatActivity {
     private SwitchMaterial switchMainTimeFrame;
     private Spinner spinnerMainTimeframe;
     private SwitchMaterial switchPriceDifference;
+    private SwitchMaterial switchMinimumTimeframeSync;
+    private View layoutMinimumTimeframeCount;
+    private EditText inputMinimumTimeframeCount;
     private EditText inputValidityMultiplier;
     private EditText inputRepeatInterval;
 
@@ -53,6 +57,9 @@ public class CreateScenarioActivity extends AppCompatActivity {
         switchMainTimeFrame = findViewById(R.id.switchMainTimeFrame);
         spinnerMainTimeframe = findViewById(R.id.spinnerMainTimeframe);
         switchPriceDifference = findViewById(R.id.switchPriceDifference);
+        switchMinimumTimeframeSync = findViewById(R.id.switchMinimumTimeframeSync);
+        layoutMinimumTimeframeCount = findViewById(R.id.layoutMinimumTimeframeCount);
+        inputMinimumTimeframeCount = findViewById(R.id.inputMinimumTimeframeCount);
         inputValidityMultiplier = findViewById(R.id.inputValidityMultiplier);
         inputRepeatInterval = findViewById(R.id.inputRepeatInterval);
 
@@ -60,6 +67,9 @@ public class CreateScenarioActivity extends AppCompatActivity {
 
         switchMainTimeFrame.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) ->
                 spinnerMainTimeframe.setVisibility(isChecked ? View.VISIBLE : View.GONE));
+
+        switchMinimumTimeframeSync.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) ->
+                layoutMinimumTimeframeCount.setVisibility(isChecked ? View.VISIBLE : View.GONE));
 
         findViewById(R.id.buttonSave).setOnClickListener(v -> saveScenario());
     }
@@ -90,10 +100,27 @@ public class CreateScenarioActivity extends AppCompatActivity {
         }
         config.setPriceDifferenceEnabled(switchPriceDifference.isChecked());
 
+        config.setMinimumTimeframeSyncEnabled(switchMinimumTimeframeSync.isChecked());
+        if (switchMinimumTimeframeSync.isChecked()) {
+            int minimumTimeframeCount = parseIntOrDefault(inputMinimumTimeframeCount, 2, 2);
+            config.setMinimumTimeframeCount(minimumTimeframeCount);
+        }
+
         MT5DashboardApplication.getInstance().getScenarioEngineManager().createScenario(config);
 
         setResult(RESULT_OK);
         finish();
+    }
+
+    private int parseIntOrDefault(EditText field, int defaultValue, int minimum) {
+        String text = field.getText().toString().trim();
+        if (text.isEmpty()) return defaultValue;
+        try {
+            int value = Integer.parseInt(text);
+            return value >= minimum ? value : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 
     private int parsePositiveIntOrDefault(EditText field, int defaultValue) {
