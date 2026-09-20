@@ -9,6 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import com.mt5dashboard.core.Direction;
 import com.mt5dashboard.core.Signal;
 import com.mt5dashboard.core.SignalStateManager;
+import com.mt5dashboard.core.WeekdayTimeUtil;
 
 /**
  * یک نمونه مستقل موتور تصمیم‌گیری برای یک Scenario مشخص (اصل ۲۴ سند: هیچ
@@ -42,6 +43,15 @@ public class ScenarioEngine {
      * متدهای تغییر وضعیت این Engine نیز synchronized شده‌اند.
      */
     private final Map<SymbolDirectionKey, Trigger> activeTriggers = new ConcurrentHashMap<>();
+
+    /**
+     * آخرین مرجع قیمت متفاوت برای Dual in One Timeframe، مستقل برای هر Symbol+Direction.
+     * این Map فقط در صورت فعال بودن Dual استفاده می‌شود و با ساخت هر ScenarioEngine خالی است.
+     */
+    private final Map<SymbolDirectionKey, DualTimeframeReference> dualReferences = new ConcurrentHashMap<>();
+
+    /** پنجره ثابت Dual: کمتر از ۳۰ کندل تایم‌فریم مرکزی. */
+    private static final int DUAL_WINDOW_CANDLES = 30;
 
     public ScenarioEngine(ScenarioConfig config, SignalStateManager signalStateManager) {
         this.config = config;
@@ -93,8 +103,18 @@ public class ScenarioEngine {
             return;
         }
 
+        // Dual in One Timeframe عمداً مستقل از بقیه شروط است: مرجع آن باید با هر
+        // سیگنال جدید روی Main Time Frame به‌روزرسانی شود، حتی اگر همان لحظه یکی از
+        // شروط دیگر رد شود. در غیر این صورت، یک سیگنال اولیه که مثلاً به‌خاطر
+        // Minimum Timeframe Sync رد شده باشد، برای Dual ثبت نمی‌شود و جفت بعدی از دست می‌رود.
+        boolean dualPassed = true;
+        if (config.isDualTimeframeEnabled()
+                && config.isMainTimeFrameEnabled() && config.getMainTimeframe() != null) {
+            dualPassed = checkAndUpdateDualTimeframe(key, incomingSignal, now);
+        }
+
         ConditionResult result = conditionEvaluator.evaluateAll(validCombination, config);
-        if (!result.passed) {
+        if (!result.passed || !dualPassed) {
             // شروط پاس نشد - هر Trigger قبلی هم دیگر معتبر نیست.
             // همان اصلاحیه بالا: اطلاع‌رسانی onTriggerExpired قبل از حذف.
             Trigger removed = activeTriggers.remove(key);
@@ -183,6 +203,38 @@ public class ScenarioEngine {
             }
         }
         return valid;
+    }
+
+    /**
+     * مرجع Dual را برای Main Time Frame بررسی و سپس به‌روزرسانی می‌کند.
+     * فقط یک قیمت مرجع (آخرین قیمت متفاوت) نگه داشته می‌شود.
+     *
+     * @return true فقط وقتی سیگنال فعلی روی Main Time Frame باشد، قیمتش با مرجع متفاوت
+     *         باشد و فاصله موثر بین دو دریافت، کمتر از ۳۰ کندل تایم‌فریم مرکزی باشد.
+     */
+    private boolean checkAndUpdateDualTimeframe(SymbolDirectionKey key, Signal incomingSignal, long now) {
+        if (incomingSignal.getTimeframe() != config.getMainTimeframe()) {
+            return false;
+        }
+
+        DualTimeframeReference previous = dualReferences.get(key);
+        if (previous == null) {
+            dualReferences.put(key, new DualTimeframeReference(incomingSignal.getPrice(), now));
+            return false;
+        }
+
+        if (Double.compare(previous.price, incomingSignal.getPrice()) == 0) {
+            return false;
+        }
+
+        long windowMillis = config.getMainTimeframe().getBaseMinutes()
+                * 60_000L * DUAL_WINDOW_CANDLES;
+        long effectiveElapsed = WeekdayTimeUtil.weekdayMillisBetween(previous.receivedAt, now);
+
+        // حتی وقتی پنجره گذشته باشد، قیمت متفاوت فعلی مرجع بعدی است.
+        dualReferences.put(key, new DualTimeframeReference(incomingSignal.getPrice(), now));
+
+        return effectiveElapsed < windowMillis;
     }
 
     private boolean sameSignalSet(Trigger trigger, List<Signal> currentValid) {

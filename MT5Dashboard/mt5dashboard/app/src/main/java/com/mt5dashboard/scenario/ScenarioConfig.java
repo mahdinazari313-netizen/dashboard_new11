@@ -34,6 +34,9 @@ public class ScenarioConfig {
     private boolean priceDifferenceEnabled; // بخش ۱۱ سند
     private int repeatIntervalMinutes;      // بخش ۱۱ و ۲۲ سند
 
+    // Dual in One Timeframe: فقط وقتی Main Time Frame فعال است معنا دارد.
+    private boolean dualTimeframeEnabled;
+
     // شرط جدید: حداقل تعداد تایم‌فریم هم‌زمان
     private boolean minimumTimeframeSyncEnabled;
     private int minimumTimeframeCount = 2; // حداقل مجاز ۲
@@ -109,6 +112,14 @@ public class ScenarioConfig {
             throw new IllegalArgumentException("Signal Repeat Interval باید مثبت باشد");
         }
         this.repeatIntervalMinutes = repeatIntervalMinutes;
+    }
+
+    public boolean isDualTimeframeEnabled() {
+        return dualTimeframeEnabled;
+    }
+
+    public void setDualTimeframeEnabled(boolean dualTimeframeEnabled) {
+        this.dualTimeframeEnabled = dualTimeframeEnabled;
     }
 
     public boolean isMinimumTimeframeSyncEnabled() {

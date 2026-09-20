@@ -119,6 +119,9 @@ public class ScenarioBoardAdapter extends RecyclerView.Adapter<ScenarioBoardAdap
         if (config.isMinimumTimeframeSyncEnabled()) {
             sb.append("  |  Min TF Sync: ").append(config.getMinimumTimeframeCount());
         }
+        if (config.isDualTimeframeEnabled()) {
+            sb.append("  |  Dual: On");
+        }
         return sb.toString();
     }
 

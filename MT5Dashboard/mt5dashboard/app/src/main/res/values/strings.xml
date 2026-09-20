@@ -35,6 +35,8 @@
     <string name="scenario_price_difference_label">Price Difference</string>
     <string name="scenario_minimum_timeframe_sync_label">Minimum Timeframe Sync</string>
     <string name="scenario_minimum_timeframe_count_label">حداقل تعداد تایم‌فریم هم‌زمان</string>
+    <string name="scenario_dual_timeframe_label">Dual in One Timeframe</string>
+    <string name="scenario_dual_requires_main_tf_error">برای Dual in One Timeframe باید Main Time Frame هم روشن باشد</string>
     <string name="scenario_validity_multiplier_label">Signal Validity Multiplier</string>
     <string name="scenario_repeat_interval_label">Signal Repeat Interval (دقیقه)</string>
     <string name="scenario_save_button">ساخت سناریو</string>

@@ -38,6 +38,7 @@ public class CreateScenarioActivity extends AppCompatActivity {
     private SwitchMaterial switchMinimumTimeframeSync;
     private View layoutMinimumTimeframeCount;
     private EditText inputMinimumTimeframeCount;
+    private SwitchMaterial switchDualTimeframe;
     private EditText inputValidityMultiplier;
     private EditText inputRepeatInterval;
 
@@ -60,6 +61,7 @@ public class CreateScenarioActivity extends AppCompatActivity {
         switchMinimumTimeframeSync = findViewById(R.id.switchMinimumTimeframeSync);
         layoutMinimumTimeframeCount = findViewById(R.id.layoutMinimumTimeframeCount);
         inputMinimumTimeframeCount = findViewById(R.id.inputMinimumTimeframeCount);
+        switchDualTimeframe = findViewById(R.id.switchDualTimeframe);
         inputValidityMultiplier = findViewById(R.id.inputValidityMultiplier);
         inputRepeatInterval = findViewById(R.id.inputRepeatInterval);
 
@@ -105,6 +107,8 @@ public class CreateScenarioActivity extends AppCompatActivity {
             int minimumTimeframeCount = parseIntOrDefault(inputMinimumTimeframeCount, 2, 2);
             config.setMinimumTimeframeCount(minimumTimeframeCount);
         }
+
+        config.setDualTimeframeEnabled(switchDualTimeframe.isChecked());
 
         MT5DashboardApplication.getInstance().getScenarioEngineManager().createScenario(config);
 
