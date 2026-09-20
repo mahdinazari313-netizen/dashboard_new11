@@ -15,7 +15,8 @@ public class ConditionEvaluator {
 
     private final List<Condition> conditions = Arrays.asList(
             new MainTimeFrameCondition(),
-            new PriceDifferenceCondition()
+            new PriceDifferenceCondition(),
+            new MinimumTimeframeSyncCondition()
             // شروط آینده (مثلاً TimeWindowCondition) اینجا اضافه می‌شوند - بدون تغییر بقیه ScenarioEngine
     );
 
