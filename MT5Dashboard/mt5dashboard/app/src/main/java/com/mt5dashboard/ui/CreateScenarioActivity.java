@@ -89,6 +89,12 @@ public class CreateScenarioActivity extends AppCompatActivity {
             return;
         }
 
+        // Dual in One Timeframe فقط همراه Main Time Frame معتبر است.
+        if (switchDualTimeframe.isChecked() && !switchMainTimeFrame.isChecked()) {
+            Toast.makeText(this, R.string.scenario_dual_requires_main_tf_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+
         int validityMultiplier = parsePositiveIntOrDefault(inputValidityMultiplier, 10);
         int repeatInterval = parsePositiveIntOrDefault(inputRepeatInterval, 10);
 
