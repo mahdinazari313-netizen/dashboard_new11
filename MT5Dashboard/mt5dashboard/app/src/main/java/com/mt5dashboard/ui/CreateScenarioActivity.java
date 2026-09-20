@@ -38,6 +38,7 @@ public class CreateScenarioActivity extends AppCompatActivity {
     private SwitchMaterial switchMinimumTimeframeSync;
     private View layoutMinimumTimeframeCount;
     private EditText inputMinimumTimeframeCount;
+    private SwitchMaterial switchDualTimeframe;
     private EditText inputValidityMultiplier;
     private EditText inputRepeatInterval;
 
@@ -60,6 +61,7 @@ public class CreateScenarioActivity extends AppCompatActivity {
         switchMinimumTimeframeSync = findViewById(R.id.switchMinimumTimeframeSync);
         layoutMinimumTimeframeCount = findViewById(R.id.layoutMinimumTimeframeCount);
         inputMinimumTimeframeCount = findViewById(R.id.inputMinimumTimeframeCount);
+        switchDualTimeframe = findViewById(R.id.switchDualTimeframe);
         inputValidityMultiplier = findViewById(R.id.inputValidityMultiplier);
         inputRepeatInterval = findViewById(R.id.inputRepeatInterval);
 
@@ -87,6 +89,12 @@ public class CreateScenarioActivity extends AppCompatActivity {
             return;
         }
 
+        // Dual in One Timeframe فقط همراه Main Time Frame معتبر است.
+        if (switchDualTimeframe.isChecked() && !switchMainTimeFrame.isChecked()) {
+            Toast.makeText(this, R.string.scenario_dual_requires_main_tf_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+
         int validityMultiplier = parsePositiveIntOrDefault(inputValidityMultiplier, 10);
         int repeatInterval = parsePositiveIntOrDefault(inputRepeatInterval, 10);
 
@@ -105,6 +113,8 @@ public class CreateScenarioActivity extends AppCompatActivity {
             int minimumTimeframeCount = parseIntOrDefault(inputMinimumTimeframeCount, 2, 2);
             config.setMinimumTimeframeCount(minimumTimeframeCount);
         }
+
+        config.setDualTimeframeEnabled(switchDualTimeframe.isChecked());
 
         MT5DashboardApplication.getInstance().getScenarioEngineManager().createScenario(config);
 
